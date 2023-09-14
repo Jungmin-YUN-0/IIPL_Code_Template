@@ -5,6 +5,7 @@ from datasets import load_dataset, concatenate_datasets
 import numpy as np
 from tqdm import tqdm 
 import csv
+import pandas as pd
 from sklearn.model_selection import train_test_split
 # from utils.utils import list_str2float
 
@@ -103,46 +104,29 @@ def data_load(dataset_path:str, huggingface_data:bool=True, data_split_ratio:lis
     # local file인 경우
     elif huggingface_data == False:
         
-        def _read_tsv(input_file, quotechar=None):
-            with open(input_file, "r", encoding='utf-8') as f:
-                reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
-                lines = []
-                for line in reader:
-                    lines.append(line)
-                return lines
-                 
-        src_a_list = []
-        src_b_list = []
-        trg_list = []
-        
         dataset_name = str(dataset_path).split('/')[-1]
-        lines = _read_tsv(os.path.join(dataset_path, f"{mode}.tsv"))
+        dataset_path = os.path.join(dataset_path, f"{mode}.tsv")
+
+        if dataset_name == 'imdb':
+            df = pd.read_csv(dataset_path, delimiter='\t', lineterminator='\n')
+            
+            src_a_list = df['text'].tolist()
+            src_b_list = None
+            trg_list = df['label'].tolist()
+
+        elif dataset_name == 'qnli':
+            df = pd.read_csv(dataset_path, delimiter='\t', lineterminator='\n')
+            
+            src_a_list = df['question'].tolist()
+            src_b_list = df['sentence'].tolist()
+            trg_list = df['label'].tolist()
+
+        else:
+            raise ValueError("dataset_path must be end with name of dataset")
+
+        src_dict = {'src_a' : src_a_list, 'src_b' : src_b_list}
+        trg_dict = {'trg' : trg_list}
         
-        if dataset_name == 'imdb':   
-            for (i, line) in enumerate(tqdm(lines)):
-                if i == 0:
-                    continue
-                try:
-                    src_a_list.append(line[0])
-                    trg_list.append(line[1])
-                except Exception as e:
-                    continue
-            src_dict = {'src_a' : src_a_list, 'src_b' : None}
-            trg_dict = {'trg' : trg_list}
-        
-        elif dataset_name == 'qnli':   
-            for (i, line) in enumerate(tqdm(lines)):
-                if i == 0:
-                    continue
-                try:
-                    src_a_list.append(line[0])
-                    src_b_list.append(line[1])
-                    trg_list.append(line[2])
-                except Exception as e:
-                    continue
-            src_dict = {'src_a' : src_a_list, 'src_b' : src_b_list}
-            trg_dict = {'trg' : trg_list}
-         
         return src_dict, trg_dict # dict, dict
 
     else :
